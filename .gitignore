@@ -10,6 +10,7 @@ venv/
 # Data (don’t commit big data)
 data/raw/
 data/processed/
+traffic-severity-app/crash_model.pkl
 
 # OS junk
 .DS_Store
