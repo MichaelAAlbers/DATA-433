@@ -11,9 +11,9 @@ import streamlit as st
 # LOAD FILES
 # -----------------------
 APP_DIR = Path(__file__).resolve().parent
-DEFAULT_MODEL_PATH = APP_DIR / "crash_model.pkl"
-ENCODERS_PATH = APP_DIR / "encoders.pkl"
-FEATURE_COLUMNS_PATH = APP_DIR / "feature_columns.pkl"
+DEFAULT_MODEL_PATH = APP_DIR / "crash_model_small.pkl"
+ENCODERS_PATH = APP_DIR / "encoders_small.pkl"
+FEATURE_COLUMNS_PATH = APP_DIR / "feature_columns_small.pkl"
 
 
 def get_setting(name: str):
@@ -25,6 +25,25 @@ def get_setting(name: str):
         return st.secrets.get(name)
     except Exception:
         return None
+
+
+def get_threshold() -> float:
+    raw_value = get_setting("CRASH_INJURY_THRESHOLD")
+
+    if raw_value is None:
+        return 0.5
+
+    try:
+        threshold = float(raw_value)
+    except ValueError as exc:
+        raise ValueError(
+            "CRASH_INJURY_THRESHOLD must be a number between 0 and 1."
+        ) from exc
+
+    if not 0 <= threshold <= 1:
+        raise ValueError("CRASH_INJURY_THRESHOLD must be between 0 and 1.")
+
+    return threshold
 
 
 def download_model(url: str) -> Path:
@@ -77,6 +96,8 @@ def resolve_model_path() -> Path:
 def load_artifacts():
     model_path = resolve_model_path()
     model = joblib.load(model_path)
+    if hasattr(model, "n_jobs"):
+        model.n_jobs = 1
     encoders = joblib.load(ENCODERS_PATH)
     feature_columns = joblib.load(FEATURE_COLUMNS_PATH)
     return model, encoders, feature_columns, model_path
@@ -84,6 +105,7 @@ def load_artifacts():
 
 try:
     model, encoders, feature_columns, model_path = load_artifacts()
+    injury_threshold = get_threshold()
 except Exception as exc:
     st.error(f"Unable to load model artifacts: {exc}")
     st.info(
@@ -95,6 +117,7 @@ except Exception as exc:
 
 st.title("Crash Severity Predictor")
 st.caption(f"Model source: {model_path}")
+st.caption(f"Injury decision threshold: {injury_threshold:.2f}")
 
 # -----------------------
 # HELPER FUNCTION
@@ -154,7 +177,14 @@ input_df = pd.DataFrame([data])[feature_columns]
 # PREDICTION
 # -----------------------
 if st.button("Predict"):
-    prediction = model.predict(input_df)[0]
+    if hasattr(model, "predict_proba"):
+        injury_probability = float(model.predict_proba(input_df)[0][1])
+    else:
+        injury_probability = float(model.predict(input_df)[0])
+
+    prediction = int(injury_probability >= injury_threshold)
+
+    st.write(f"Injury probability: {injury_probability:.1%}")
 
     if prediction == 0:
         st.success("Prediction: No Injury")
