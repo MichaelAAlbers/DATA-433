@@ -12,8 +12,8 @@ import streamlit as st
 # -----------------------
 APP_DIR = Path(__file__).resolve().parent
 DEFAULT_MODEL_PATH = APP_DIR / "crash_model_small.pkl"
-ENCODERS_PATH = APP_DIR / "encoders_small.pkl"
-FEATURE_COLUMNS_PATH = APP_DIR / "feature_columns_small.pkl"
+ENCODERS_PATH = APP_DIR / "encoders.pkl"
+FEATURE_COLUMNS_PATH = APP_DIR / "feature_columns.pkl"
 
 
 def get_setting(name: str):
